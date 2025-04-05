@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>ECG Results</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: #f8f9fa;
+      font-family: 'Arial', sans-serif;
+    }
+
+    .card {
+      background: rgba(255,255,255,0.3);
+      backdrop-filter: blur(10px);
+      border-radius: 15px;
+      padding: 25px;
+      transition: transform 0.3s ease;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+
+    .card:hover {
+      transform: scale(1.01);
+    }
+
+    .plot {
+      width: 100%;
+      max-height: 400px;
+      object-fit: contain;
+      cursor: zoom-in;
+      transition: transform 0.2s ease-in-out;
+    }
+
+    .plot:hover {
+      transform: scale(1.05);
+    }
+
+    .slider-btn {
+      cursor: pointer;
+    }
+
+    .btn-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 30px;
+    }
+
+    @media (max-width: 768px) {
+      .btn-row {
+        flex-direction: column;
+        gap: 10px;
+      }
+    }
+  </style>
+
+  <script>
+    function togglePlots() {
+      var orig = document.getElementById('original');
+      var corr = document.getElementById('corrected');
+      orig.hidden = !orig.hidden;
+      corr.hidden = !corr.hidden;
+    }
+
+    function downloadPlot(imgId, plotType) {
+      var imgdata = document.getElementById(imgId).src.split(',')[1];
+      window.location = '/download/' + plotType + '?imgdata=' + encodeURIComponent(imgdata);
+    }
+  </script>
+</head>
+<body>
+<div class="container py-4">
+  <div class="card shadow-lg">
+
+    <div class="text-center">
+      <button class="btn btn-secondary slider-btn mb-3" onclick="togglePlots()">Toggle Original/Corrected ECG</button>
+    </div>
+
+    <div id="original">
+      <h4>Original ECG</h4>
+      <img id="origImg" src="data:image/png;base64,{{ original_plot }}" class="plot">
+      <div class="text-center">
+        <button class="btn btn-primary mt-2" onclick="downloadPlot('origImg', 'original')">Download Original ECG</button>
+      </div>
+    </div>
+
+    <div id="corrected" hidden>
+      <h4>Baseline Corrected ECG</h4>
+      <img id="corrImg" src="data:image/png;base64,{{ corrected_plot }}" class="plot">
+      <div class="text-center">
+        <button class="btn btn-primary mt-2" onclick="downloadPlot('corrImg', 'corrected')">Download Corrected ECG</button>
+      </div>
+    </div>
+
+    <div class="mt-4">
+      <h4>R-Peaks Detected ECG</h4>
+      <img id="rpeakImg" src="data:image/png;base64,{{ rpeak_plot }}" class="plot">
+      <div class="text-center">
+        <button class="btn btn-primary mt-2" onclick="downloadPlot('rpeakImg', 'rpeak')">Download R-Peak ECG</button>
+      </div>
+    </div>
+
+    <!-- ✅ BUTTONS AT BOTTOM -->
+    <div class="btn-row">
+      <a href="{{ url_for('profile') }}" class="btn btn-outline-primary px-4">← Back to Profile</a>
+      <a href="{{ url_for('upload') }}" class="btn btn-outline-success px-4">Analyze Another ECG →</a>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

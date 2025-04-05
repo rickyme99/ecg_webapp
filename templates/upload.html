@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Upload ECG</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap 5 CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body class="container py-4">
+
+<div class="glass-box">
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4>Hello, {{ username }}</h4>
+        <a class="btn btn-danger btn-sm" href="{{ url_for('logout') }}">Logout</a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    {% if processed %}
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+
+            <!-- Heart rate & beats summary -->
+            <div class="glass-card text-center p-3 mb-4">
+                <h5 class="fw-bold">Heart Rate: {{ heart_rate }} BPM
+                    {% if heart_rate > 100 %}
+                        <span class="badge bg-danger ms-2">High!</span>
+                    {% elif heart_rate < 60 %}
+                        <span class="badge bg-warning text-dark ms-2">Low!</span>
+                    {% else %}
+                        <span class="badge bg-success ms-2">Normal</span>
+                    {% endif %}
+                </h5>
+                <h5 class="fw-bold">Beats Detected: {{ num_beats }}</h5>
+            </div>
+
+            <!-- Toggle Slider -->
+            <div class="form-check form-switch fs-5 my-3">
+                <input class="form-check-input" type="checkbox" id="toggleRaw" checked>
+                <label class="form-check-label fw-bold" for="toggleRaw">Toggle Original / Corrected ECG</label>
+            </div>
+
+            <!-- Corrected ECG -->
+            <div id="baselineContainer">
+                <h5>Baseline Corrected ECG:</h5>
+                <img src="{{ url_for('static', filename=baseline_plot) }}" class="img-fluid rounded shadow mb-2">
+                <a href="{{ url_for('static', filename=baseline_plot) }}" download class="btn btn-secondary btn-sm">Download Baseline Plot</a>
+            </div>
+
+            <!-- Original ECG (hidden by default) -->
+            <div id="rawContainer" style="display: none;">
+                <h5>Original ECG:</h5>
+                <img src="{{ url_for('static', filename=raw_plot) }}" class="img-fluid rounded shadow mb-2">
+                <a href="{{ url_for('static', filename=raw_plot) }}" download class="btn btn-secondary btn-sm">Download Original Plot</a>
+            </div>
+
+            <!-- R-peak plot -->
+            <h5 class="mt-4">ECG with R-peaks:</h5>
+            <img src="{{ url_for('static', filename=rpeak_plot) }}" class="img-fluid rounded shadow mb-2">
+            <a href="{{ url_for('static', filename=rpeak_plot) }}" download class="btn btn-secondary btn-sm mb-3">Download R-peak Plot</a>
+
+            <!-- Advanced Analysis -->
+            <h5 class="mt-4">Additional Analysis:</h5>
+            <form method="POST" action="{{ url_for('advanced') }}">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="features" value="hrv" id="hrvCheck">
+                    <label class="form-check-label" for="hrvCheck">Compute HRV metrics (SDNN, RMSSD, pNN50)</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="features" value="hist" id="histCheck">
+                    <label class="form-check-label" for="histCheck">Show RR-interval histogram</label>
+                </div>
+                <button class="btn btn-primary mt-2">Run Analysis</button>
+            </form>
+
+            {% if metrics %}
+            <div class="card p-3 mt-3">
+                <h5>HRV Metrics:</h5>
+                <ul>
+                    <li data-bs-toggle="tooltip" title="Standard deviation of NN intervals.">SDNN: {{ metrics["SDNN"] }} ms</li>
+                    <li data-bs-toggle="tooltip" title="Root mean square of successive interval differences.">RMSSD: {{ metrics["RMSSD"] }} ms</li>
+                    <li data-bs-toggle="tooltip" title="Percentage of intervals > 50 ms different.">pNN50: {{ metrics["pNN50"] }}% (NN50: {{ metrics["NN50"] }})</li>
+                </ul>
+                <a href="{{ url_for('export', format='pdf') }}" class="btn btn-success btn-sm me-2">Download PDF</a>
+            </div>
+            {% endif %}
+
+            {% if rr_hist_plot %}
+            <h5 class="mt-4">RR Interval Histogram:</h5>
+            <img src="{{ url_for('static', filename=rr_hist_plot) }}" class="img-fluid rounded shadow mb-2">
+            <a href="{{ url_for('static', filename=rr_hist_plot) }}" download class="btn btn-secondary btn-sm">Download Histogram</a>
+            {% endif %}
+
+         <style>
+          .glass-button {
+            padding: 12px 28px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            border-radius: 10px; /* Less rounded than before */
+            border: none;
+            color: white;
+            text-decoration: none;
+            backdrop-filter: blur(10px);
+            background: linear-gradient(135deg, #00c853, #43a047);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            transition: all 0.3s ease;
+            letter-spacing: 0.5px;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+          }
+
+          .glass-button:hover {
+            transform: scale(1.06);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+          }
+
+          .btn-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 30px;
+          }
+
+          @media (max-width: 768px) {
+            .btn-row {
+              flex-direction: column;
+              gap: 10px;
+            }
+          }
+        </style>
+
+        <div class="btn-row">
+          <a href="{{ url_for('profile') }}" class="glass-button btn-back">← Back to Profile</a>
+          <a href="{{ url_for('upload') }}" class="glass-button btn-analyze">Analyze Another ECG →</a>
+        </div>
+
+
+        </div>
+    </div>
+    {% else %}
+    <!-- Upload form -->
+    <form method="POST" enctype="multipart/form-data">
+        <div class="form-group mb-2">
+            <label>Choose File Type:</label><br>
+            <input type="radio" name="filetype" value="csv" checked> CSV
+            <input type="radio" name="filetype" value="mat"> MAT
+        </div>
+        <div class="form-group mb-3">
+            <input type="file" name="ecgfile" class="form-control">
+        </div>
+        <button class="btn btn-primary">Upload and Analyze</button>
+    </form>
+    {% endif %}
+
+</div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    // Toggle raw vs baseline ECG
+    document.getElementById("toggleRaw").addEventListener("change", function(){
+        var rawDiv = document.getElementById("rawContainer");
+        var baseDiv = document.getElementById("baselineContainer");
+        rawDiv.style.display = this.checked ? "none" : "block";
+        baseDiv.style.display = this.checked ? "block" : "none";
+    });
+
+    // Bootstrap tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    tooltipTriggerList.forEach(function (tooltipTriggerEl) {
+        new bootstrap.Tooltip(tooltipTriggerEl)
+    });
+</script>
+
+</body>
+</html>
